@@ -1,61 +1,44 @@
 /*
- *  To be used by students
+ *  This file is for use by students to define anything they wish.  It is used by the proxy cache implementation
  */
- #ifndef __CACHE_STUDENT_H__822
- #define __CACHE_STUDENT_H__822
+ #ifndef __CACHE_STUDENT_H__
+ #define __CACHE_STUDENT_H__
 
- #include "steque.h"
- #include <semaphore.h>
- #include "gfserver.h"
- #include <stdbool.h>
+#include "steque.h"
+#include "mqueue.h"
+#include <sys/mman.h>
+#include <semaphore.h>
+#define MESSAGEQUEUE "/msgqueue"
+#define PROXY_SEM "/proxysem"
+#define CACHE_SEM "/cachesem"
 
-#define MESSAGE_QUEUE_NAME "/message_queue"
-#define MAX_SHMNAME_LEN 32
-#define MAX_PATH_LEN 256
-#define MAX_MSG_NUM 10
-#define MAX_MSG_SIZE 1024
-
-extern pthread_mutex_t pq_mtx;
-extern pthread_cond_t pq_cond;
-extern steque_t *proxy_queue;
-
-typedef struct shared_data
-{
-    char name[10];
-    int segment_size;
-    void *data;
-    char shm_id[10];
-    int seg_size;
-    sem_t sem_proxy;
-    sem_t sem_cache;
-    sem_t sem_filelen;
-    int file_size;
-    int read_len;
-    int status_code;
-
-}shared_data;
-
-
-typedef struct cache_req_data
+// structure for command channel
+typedef struct req_struct
 {
     char path[MAX_REQUEST_LEN];
     char shm_id[10];
-    size_t seg_size;
-} cache_req_data;
+    size_t segsize;
+} req_struct;
 
+// structure for data channel
+typedef struct shm_details
+{
+    sem_t proxysem;
+    sem_t cachesem;
+     sem_t filelen_sem;
+    char shm_id[10];   
+    size_t segsize;
+    size_t filesize;
+    int status;
+    size_t read_len;  
+    char data[];
+    
+}shm_details;
 
-typedef struct  {
-  pthread_t pthread;
-  bool is_live;
-}thread_data;
+void * workerRoutine(void *arg);
+void initSharedMemory(int segments,size_t segsize);
+size_t processResponse(shm_details *shm, gfcontext_t *ctx);
+void sendResponse(int fildes,char *memName,size_t segsize);
+void queueMemory(shm_details *mem, char * memName);
 
-
-typedef struct {
-    char filePath[MAX_PATH_LEN];
-    char shmName[MAX_SHMNAME_LEN];
-    size_t nSegments;
-    size_t segmentSize;
-}MSQRequest_t;
-
-void * worker_func(void *arg);
-#endif // __CACHE_STUDENT_H__822
+ #endif // __CACHE_STUDENT_H__
